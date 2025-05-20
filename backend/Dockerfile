@@ -18,4 +18,4 @@ COPY . .
 
 # Указываем команду по умолчанию: запускаем Gunicorn
 # Предполагается, что ваш корневой Django-пакет называется foodgram_backend
-CMD ["gunicorn", "foodgram_backend.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "foodgram.wsgi:application", "--bind", "0.0.0.0:8000"]
