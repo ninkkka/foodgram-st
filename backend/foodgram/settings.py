@@ -63,8 +63,12 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'foodgram'),
+        'USER': os.getenv('POSTGRES_USER', 'foodgram_user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'supersecurepassword'),
+        'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -125,29 +129,24 @@ REST_FRAMEWORK = {
 }
 
 DJOSER = {
+    # какие сериализаторы использовать
     'SERIALIZERS': {
-        'user_create': (
-            'api.serializers.UserCreateSerializer'
-        ),
-        'user': (
-            'api.serializers.UserReadSerializer'
-        ),
-        'current_user': (
-            'api.serializers.UserReadSerializer'
-        ),
-        'set_password': (
-            'djoser.serializers.SetPasswordSerializer'
-        ),
+        'user_create': 'api.serializers.UserCreateSerializer',
+        'user': 'api.serializers.UserReadSerializer',
+        'current_user': 'api.serializers.UserReadSerializer',
+        'set_password': 'djoser.serializers.SetPasswordSerializer',
     },
+    # права доступа к Djoser-эндпоинтам
     'PERMISSIONS': {
-        'user': [
-            'djoser.permissions.CurrentUserOrAdminOrReadOnly'
-        ],
-        'user_list': [
-            'rest_framework.permissions.'
-            'IsAuthenticatedOrReadOnly'
-        ],
+        'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
+        'user_list': ['rest_framework.permissions.IsAuthenticatedOrReadOnly'],
     },
+    # LOGIN_FIELD — по какому полю логинимся
+    'LOGIN_FIELD': 'email',
+    # требовать повторного ввода пароля при регистрации
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    # чтобы токен работал через djoser.urls.authtoken
+    'TOKEN_MODEL': None,  # используем стандартный Token
     'HIDE_USERS': False,
 }
 

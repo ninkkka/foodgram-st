@@ -3,9 +3,13 @@ services:
 
   frontend:
     container_name: foodgram-front
-    build: ../frontend
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
     volumes:
-      - ../frontend/:/app/result_build/
+      - ../frontend:/app/result_build
+    networks:
+      - backend
   nginx:
     container_name: foodgram-proxy
     image: nginx:1.25.4-alpine

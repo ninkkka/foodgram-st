@@ -5,6 +5,14 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Djoser: регистрация, профиль
+    path('auth/', include('djoser.urls')),
+
+    # Djoser: маршруты для токенов (/auth/token/login/, /auth/token/logout/)
+    path('auth/', include('djoser.urls.authtoken')),
+
+    # Ваше API
     path('api/', include('api.urls', namespace='api')),
 ]
 

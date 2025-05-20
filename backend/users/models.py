@@ -86,6 +86,11 @@ class Subscription(models.Model):
         related_name='subscribers',
         verbose_name='Автор',
     )
+    created_at = models.DateTimeField(
+        'Дата подписки',
+        auto_now_add=True,
+        db_index=True
+    )
 
     class Meta:
         constraints = [
@@ -96,6 +101,7 @@ class Subscription(models.Model):
         ]
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
+        ordering = ['-created_at']
 
     def __str__(self):
         return f'{self.user.username} → {self.author.username}'
