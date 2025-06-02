@@ -49,6 +49,12 @@ class User(AbstractUser):
             validate_not_me,
         ],
     )
+    avatar = models.ImageField(
+        'Фото пользователя',
+        upload_to='avatars/',
+        blank=True,
+        null=True,
+    )
     role = models.CharField(
         'Роль',
         max_length=5,

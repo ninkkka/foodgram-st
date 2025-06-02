@@ -4,7 +4,7 @@ from django.http import HttpResponse
 
 from rest_framework import viewsets, mixins, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from django_filters.rest_framework import DjangoFilterBackend
@@ -33,6 +33,13 @@ class CustomUserViewSet(
     queryset = User.objects.all()
     pagination_class = CustomPagination
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        if self.action in ('list', 'retrieve'):
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
     def get_serializer_class(self):
         if self.action in ('create',):
             return UserCreateSerializer
@@ -50,6 +57,47 @@ class CustomUserViewSet(
             context={'request': request}
         )
         return Response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=('post',),
+        permission_classes=(IsAuthenticated,),
+        url_path='set_password'
+    )
+    def set_password(self, request):
+        """
+        POST /api/users/set_password/
+        Тесты ожидают:
+         - если аноним → 401
+         - если не переданы поля current_password/new_password → 400
+         - если current_password неверный → 400
+         - если всё корректно → смена пароля и 204 No Content
+        """
+        user = request.user
+        current = request.data.get('current_password')
+        new = request.data.get('new_password')
+
+        if current is None or new is None:
+            return Response(
+                {'detail': 'Требуются поля current_password и new_password'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not user.check_password(current):
+            return Response(
+                {'current_password': 'Неверный текущий пароль'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(new, str) or new.strip() == '':
+            return Response(
+                {'new_password': 'Новый пароль не может быть пустым'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new)
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True,

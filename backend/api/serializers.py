@@ -4,10 +4,7 @@ from django.core.files.base import ContentFile
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
-from djoser.serializers import (
-    UserCreateSerializer as DjoserUserCreateSerializer,
-    UserSerializer as DjoserUserSerializer,
-)
+from djoser.serializers import UserSerializer as DjoserUserSerializer
 from recipes.models import (
     Ingredient,
     Tag,
@@ -32,9 +29,11 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class UserCreateSerializer(DjoserUserCreateSerializer):
-    """Регистрация пользователя."""
-    class Meta(DjoserUserCreateSerializer.Meta):
+class UserCreateSerializer(serializers.ModelSerializer):
+    """Регистрация пользователя: только нужные поля и хеширование пароля."""
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
         model = User
         fields = (
             'id',
@@ -45,19 +44,31 @@ class UserCreateSerializer(DjoserUserCreateSerializer):
             'password',
         )
 
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            password=validated_data['password'],
+        )
+        return user
+
 
 class UserReadSerializer(DjoserUserSerializer):
     """Чтение профиля пользователя."""
     is_subscribed = serializers.SerializerMethodField()
+    avatar = serializers.ImageField(read_only=True) 
 
     class Meta(DjoserUserSerializer.Meta):
         model = User
         fields = (
             'id',
-            'email',
             'username',
             'first_name',
             'last_name',
+            'email',
+            'avatar',
             'is_subscribed',
         )
 

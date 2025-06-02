@@ -29,6 +29,13 @@ INSTALLED_APPS = [
     'django_filters',
 ]
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -60,17 +67,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'foodgram.wsgi.application'
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'foodgram'),
-        'USER': os.getenv('POSTGRES_USER', 'foodgram_user'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'supersecurepassword'),
-        'HOST': os.getenv('POSTGRES_HOST', 'postgres'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
-    }
-}
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -146,7 +142,6 @@ DJOSER = {
     # требовать повторного ввода пароля при регистрации
     'USER_CREATE_PASSWORD_RETYPE': True,
     # чтобы токен работал через djoser.urls.authtoken
-    'TOKEN_MODEL': None,  # используем стандартный Token
     'HIDE_USERS': False,
 }
 
