@@ -82,6 +82,12 @@ class UserReadSerializer(DjoserUserSerializer):
         ).exists()
 
 
+class AvatarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('avatar',)
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     """Сериализатор подписки на автора."""
     user = serializers.PrimaryKeyRelatedField(

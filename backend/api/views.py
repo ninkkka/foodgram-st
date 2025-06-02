@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from users.models import User, Subscription
 from recipes.models import (
@@ -18,7 +19,7 @@ from .serializers import (
     UserReadSerializer, UserCreateSerializer, SubscriptionSerializer,
     IngredientSerializer, TagSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, RecipeShortSerializer,
-    FavoriteSerializer, ShoppingCartSerializer
+    FavoriteSerializer, ShoppingCartSerializer, AvatarSerializer
 )
 from .filters import RecipeFilter, IngredientFilter
 from .pagination import CustomPagination
@@ -139,6 +140,22 @@ class CustomUserViewSet(
             context={'request': request}
         )
         return self.get_paginated_response(serializer.data)
+
+    @action(
+        detail=False,
+        methods=('put', 'delete'),
+        permission_classes=[IsAuthenticated],
+        parser_classes=[MultiPartParser, FormParser])
+    def avatar(self, request):
+        user = request.user
+
+        if request.method == 'DELETE':
+            user.avatar.delete(save=True)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = AvatarSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
