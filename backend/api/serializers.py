@@ -83,6 +83,8 @@ class UserReadSerializer(DjoserUserSerializer):
 
 
 class AvatarSerializer(serializers.ModelSerializer):
+    avatar = Base64ImageField()
+
     class Meta:
         model = User
         fields = ('avatar',)

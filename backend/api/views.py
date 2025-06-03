@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from users.models import User, Subscription
 from recipes.models import (
@@ -144,8 +144,10 @@ class CustomUserViewSet(
     @action(
         detail=False,
         methods=('put', 'delete'),
-        permission_classes=[IsAuthenticated],
-        parser_classes=[MultiPartParser, FormParser])
+        permission_classes=(IsAuthenticated),
+        parser_classes=(MultiPartParser, FormParser, JSONParser),
+        url_path='me/avatar'
+    )
     def avatar(self, request):
         user = request.user
 
@@ -153,9 +155,21 @@ class CustomUserViewSet(
             user.avatar.delete(save=True)
             return Response(status=status.HTTP_204_NO_CONTENT)
 
+        if 'avatar' not in request.data:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
         serializer = AvatarSerializer(user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+
+        user.refresh_from_db()
+
+        full_url = request.build_absolute_uri(user.avatar.url)
+
+        return Response(
+            {"avatar": full_url},
+            status=status.HTTP_200_OK
+        )
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -165,6 +179,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = IngredientFilter
     pagination_class = None
+    permission_classes = (AllowAny,)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
