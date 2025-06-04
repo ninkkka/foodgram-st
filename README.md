@@ -118,3 +118,11 @@ curl -X POST http://localhost:8000/auth/token/login/ -H "Content-Type: applicati
 '''bash
 
 curl -X POST http://localhost:8000/api/recipes/1/favorite/ -H "Authorization: Token <твой_токен>"
+
+В базу данных через shell добавляются тег и ингредиенты
+
+from recipes.models import Tag, Ingredient
+Tag.objects.create(name="Завтрак", color="#FF0000", slug="zavtrak")
+Ingredient.objects.create(name="Сахар", measurement_unit="грамм") 
+Ingredient.objects.create(name="Мука", measurement_unit="грамм") 
+exit()

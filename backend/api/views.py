@@ -182,7 +182,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (AllowAny,)
 
 
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
+class TagViewSet(viewsets.ModelViewSet):
     """Эндпоинт /api/tags/."""
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
