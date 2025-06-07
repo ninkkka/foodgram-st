@@ -126,3 +126,6 @@ Tag.objects.create(name="Завтрак", color="#FF0000", slug="zavtrak")
 Ingredient.objects.create(name="Сахар", measurement_unit="грамм") 
 Ingredient.objects.create(name="Мука", measurement_unit="грамм") 
 exit()
+
+комментарий к последней правке: 
+я подправила код по Вашим комментариям, но в итоге через постман у меня стало только больше проваленных ошибок. я не понимаю, что у меня не так, отчего грустно.

@@ -5,7 +5,6 @@ from rest_framework.documentation import include_docs_urls
 from .views import (
     CustomUserViewSet,
     IngredientViewSet,
-    TagViewSet,
     RecipeViewSet
 )
 
@@ -14,7 +13,6 @@ app_name = 'api'
 router = DefaultRouter()
 router.register(r'users', CustomUserViewSet, basename='users')
 router.register(r'ingredients', IngredientViewSet, basename='ingredients')
-router.register(r'tags', TagViewSet, basename='tags')
 router.register(r'recipes', RecipeViewSet, basename='recipes')
 
 urlpatterns = [

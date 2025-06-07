@@ -12,6 +12,10 @@ from recipes.models import (
     IngredientInRecipe,
     Favorite,
     ShoppingCart,
+    AMOUNT_MIN,
+    AMOUNT_MAX,
+    COOKING_TIME_MIN,
+    COOKING_TIME_MAX,
 )
 from users.models import User, Subscription
 
@@ -73,11 +77,10 @@ class UserReadSerializer(DjoserUserSerializer):
         )
 
     def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if not request or request.user.is_anonymous:
+        user = self.context['request'].user
+        if user.is_anonymous:
             return False
-        return Subscription.objects.filter(
-            user=request.user,
+        return user.subscriptions.filter(
             author=obj
         ).exists()
 
@@ -130,13 +133,6 @@ class IngredientSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'measurement_unit')
 
 
-class TagSerializer(serializers.ModelSerializer):
-    """Чтение тега."""
-    class Meta:
-        model = Tag
-        fields = ('id', 'name', 'color', 'slug')
-
-
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
     """Ингредиент в рецепте с указанием количества."""
     id = serializers.PrimaryKeyRelatedField(
@@ -150,6 +146,14 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit',
         read_only=True
+    )
+    amount = serializers.IntegerField(
+        min_value=AMOUNT_MIN,
+        max_value=AMOUNT_MAX,
+        error_messages={
+            'min_value': f'Минимум {AMOUNT_MIN}.',
+            'max_value': f'Максимум {AMOUNT_MAX}.'
+        }
     )
 
     class Meta:
@@ -166,7 +170,6 @@ class RecipeShortSerializer(serializers.ModelSerializer):
 
 class RecipeReadSerializer(serializers.ModelSerializer):
     """Полное чтение рецепта."""
-    tags = TagSerializer(many=True, read_only=True)
     author = UserReadSerializer(read_only=True)
     ingredients = IngredientInRecipeSerializer(
         source='ingredient_amounts',
@@ -180,7 +183,6 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = (
             'id',
-            'tags',
             'author',
             'ingredients',
             'is_favorited',
@@ -195,32 +197,30 @@ class RecipeReadSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         if user.is_anonymous:
             return False
-        return Favorite.objects.filter(
-            user=user,
-            recipe=obj
-        ).exists()
+        return user.favorites.filter(recipe=obj).exists()
 
     def get_is_in_shopping_cart(self, obj):
         user = self.context['request'].user
         if user.is_anonymous:
             return False
-        return ShoppingCart.objects.filter(
-            user=user,
-            recipe=obj
-        ).exists()
+        return user.shopping_cart.filter(recipe=obj).exists()
 
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
     """Создание/обновление рецепта."""
-    tags = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Tag.objects.all()
-    )
     ingredients = IngredientInRecipeSerializer(
         source='ingredient_amounts',
         many=True
     )
     image = Base64ImageField()
+    cooking_time = serializers.IntegerField(
+        min_value=COOKING_TIME_MIN,
+        max_value=COOKING_TIME_MAX,
+        error_messages={
+            'min_value': f'Не меньше {COOKING_TIME_MIN} минуты.',
+            'max_value': f'Не больше {COOKING_TIME_MAX} минут.'
+        }
+    )
 
     class Meta:
         model = Recipe
@@ -243,44 +243,32 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 'Ингредиенты не должны повторяться.'
             )
-        for item in value:
-            if item['amount'] <= 0:
-                raise serializers.ValidationError(
-                    'Количество ингредиента должно быть положительным.'
-                )
         return value
 
+    def _save_ingredients(self, recipe, ingredients):
+        recipe.ingredient_amounts.all().delete()
+        objs = [
+            IngredientInRecipe(
+                recipe=recipe,
+                ingredient=ing['ingredient'],
+                amount=ing['amount']
+            )
+            for ing in ingredients
+        ]
+        IngredientInRecipe.objects.bulk_create(objs)
+
     def create(self, validated_data):
-        tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredient_amounts')
         recipe = Recipe.objects.create(
             author=self.context['request'].user,
             **validated_data
         )
-        recipe.tags.set(tags)
-        IngredientInRecipe.objects.bulk_create([
-            IngredientInRecipe(
-                recipe=recipe,
-                ingredient=ing['ingredient'],
-                amount=ing['amount']
-            ) for ing in ingredients
-        ])
+        self._save_ingredients(recipe, ingredients)
         return recipe
 
     def update(self, instance, validated_data):
-        tags = validated_data.pop('tags')
         ingredients = validated_data.pop('ingredient_amounts')
-        instance.tags.set(tags)
-        IngredientInRecipe.objects.filter(
-            recipe=instance
-        ).delete()
-        IngredientInRecipe.objects.bulk_create([
-            IngredientInRecipe(
-                recipe=instance,
-                ingredient=ing['ingredient'],
-                amount=ing['amount']
-            ) for ing in ingredients
-        ])
+        self._save_ingredients(instance, ingredients)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

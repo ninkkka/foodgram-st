@@ -1,7 +1,16 @@
-from django.core.validators import MinValueValidator, RegexValidator
+from django.core.validators import (
+    MinValueValidator,
+    MaxValueValidator,
+    RegexValidator,
+)
 from django.db import models
 
 from users.models import User
+
+COOKING_TIME_MIN = 1
+COOKING_TIME_MAX = 32_000
+AMOUNT_MIN = 1
+AMOUNT_MAX = 32_000
 
 
 class Ingredient(models.Model):
@@ -94,10 +103,11 @@ class Recipe(models.Model):
         related_name='recipes',
         verbose_name='Тэги',
     )
-    cooking_time = models.PositiveIntegerField(
+    cooking_time = models.PositiveSmallIntegerField(
         'Время приготовления (мин.)',
         validators=[
-            MinValueValidator(1, 'Не меньше 1 минуты.')
+            MinValueValidator(COOKING_TIME_MIN, f'Не меньше {COOKING_TIME_MIN} минуты.'),
+            MaxValueValidator(COOKING_TIME_MAX, f'Не больше {COOKING_TIME_MAX} минут.')
         ],
     )
     pub_date = models.DateTimeField(
@@ -126,14 +136,16 @@ class IngredientInRecipe(models.Model):
         on_delete=models.CASCADE,
         related_name='ingredient_amounts',
     )
-    amount = models.PositiveIntegerField(
+    amount = models.PositiveSmallIntegerField(
         'Количество',
         validators=[
-            MinValueValidator(1, 'Минимум 1.')
+            MinValueValidator(AMOUNT_MIN, f'Минимум {AMOUNT_MIN}.'),
+            MaxValueValidator(AMOUNT_MAX, f'Максимум {AMOUNT_MAX}.')
         ],
     )
 
     class Meta:
+        ordering = ['recipe', 'ingredient']
         constraints = [
             models.UniqueConstraint(
                 fields=['recipe', 'ingredient'],
@@ -161,6 +173,7 @@ class Favorite(models.Model):
     )
 
     class Meta:
+        ordering = ['user', 'recipe']
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'recipe'],
@@ -188,6 +201,7 @@ class ShoppingCart(models.Model):
     )
 
     class Meta:
+        ordering = ['user', 'recipe']
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'recipe'],

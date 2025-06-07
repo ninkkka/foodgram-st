@@ -12,12 +12,12 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from users.models import User, Subscription
 from recipes.models import (
-    Ingredient, Tag, Recipe,
+    Ingredient, Recipe,
     IngredientInRecipe, Favorite, ShoppingCart
 )
 from .serializers import (
     UserReadSerializer, UserCreateSerializer, SubscriptionSerializer,
-    IngredientSerializer, TagSerializer,
+    IngredientSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, RecipeShortSerializer,
     FavoriteSerializer, ShoppingCartSerializer, AvatarSerializer
 )
@@ -120,8 +120,8 @@ class CustomUserViewSet(
                                    context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
-        Subscription.objects.filter(
-            user=request.user, author=author
+        request.user.subscriptions.filter(
+            author=author
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -182,13 +182,6 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = (AllowAny,)
 
 
-class TagViewSet(viewsets.ModelViewSet):
-    """Эндпоинт /api/tags/."""
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    pagination_class = None
-
-
 class RecipeViewSet(viewsets.ModelViewSet):
     """Эндпоинт /api/recipes/."""
     queryset = Recipe.objects.all()
@@ -225,8 +218,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 ).data,
                 status=status.HTTP_201_CREATED
             )
-        Favorite.objects.filter(
-            user=request.user, recipe=recipe
+        request.user.favorites.filter(
+            recipe=recipe
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -252,8 +245,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 ).data,
                 status=status.HTTP_201_CREATED
             )
-        ShoppingCart.objects.filter(
-            user=request.user, recipe=recipe
+        request.user.shopping_cart.filter(
+            recipe=recipe
         ).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
