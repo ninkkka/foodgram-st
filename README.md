@@ -119,13 +119,28 @@ curl -X POST http://localhost:8000/auth/token/login/ -H "Content-Type: applicati
 
 curl -X POST http://localhost:8000/api/recipes/1/favorite/ -H "Authorization: Token <твой_токен>"
 
-В базу данных через shell добавляются тег и ингредиенты
+перед повторным запуском тестов через постман сначала очищается база данных через команду 
 
-from recipes.models import Tag, Ingredient
-Tag.objects.create(name="Завтрак", color="#FF0000", slug="zavtrak")
-Ingredient.objects.create(name="Сахар", measurement_unit="грамм") 
-Ingredient.objects.create(name="Мука", measurement_unit="грамм") 
-exit()
+python manage.py flush
 
-комментарий к последней правке: 
-я подправила код по Вашим комментариям, но в итоге через постман у меня стало только больше проваленных ошибок. я не понимаю, что у меня не так, отчего грустно.
+Затем в базу данных через shell добавляются ингредиенты
+
+python manage.py shell
+
+import json
+from pathlib import Path
+from recipes.models import Ingredient
+
+# Строим путь: из папки backend идём наверх и в data
+fixture_path = Path('..') / 'data' / 'ingredients.json'
+
+# Читаем и грузим
+with fixture_path.open(encoding='utf-8') as f:
+    data = json.load(f)
+
+# Создаём/обновляем ингредиенты
+for item in data:
+    Ingredient.objects.update_or_create(
+        name=item['name'],
+        defaults={'measurement_unit': item['measurement_unit']}
+    )

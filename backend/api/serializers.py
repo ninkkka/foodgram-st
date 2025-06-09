@@ -1,4 +1,5 @@
 import base64
+import binascii
 
 from django.core.files.base import ContentFile
 from rest_framework import serializers
@@ -21,15 +22,17 @@ from users.models import User, Subscription
 
 
 class Base64ImageField(serializers.ImageField):
-    """Поле для приёма картинки в виде base64-строки."""
+    """Приём картинки в виде base64-строки с автоматическим выравниванием padding."""
     def to_internal_value(self, data):
         if isinstance(data, str) and data.startswith('data:image'):
             header, img_str = data.split(';base64,')
             ext = header.split('/')[-1]
-            data = ContentFile(
-                base64.b64decode(img_str),
-                name=f'temp.{ext}'
-            )
+            img_str += '=' * (-len(img_str) % 4)
+            try:
+                decoded = base64.b64decode(img_str)
+            except (TypeError, binascii.Error) as e:
+                raise serializers.ValidationError('Некорректная Base64 строка изображения') from e
+            data = ContentFile(decoded, name=f'temp.{ext}')
         return super().to_internal_value(data)
 
 
@@ -208,6 +211,12 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 class RecipeWriteSerializer(serializers.ModelSerializer):
     """Создание/обновление рецепта."""
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Tag.objects.all(),
+        required=False,
+        default=[]
+    )
     ingredients = IngredientInRecipeSerializer(
         source='ingredient_amounts',
         many=True
@@ -258,16 +267,20 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         IngredientInRecipe.objects.bulk_create(objs)
 
     def create(self, validated_data):
+        tags = validated_data.pop('tags', [])
         ingredients = validated_data.pop('ingredient_amounts')
         recipe = Recipe.objects.create(
             author=self.context['request'].user,
             **validated_data
         )
+        recipe.tags.set(tags)
         self._save_ingredients(recipe, ingredients)
         return recipe
 
     def update(self, instance, validated_data):
+        tags = validated_data.pop('tags', [])
         ingredients = validated_data.pop('ingredient_amounts')
+        instance.tags.set(tags)
         self._save_ingredients(instance, ingredients)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -335,3 +348,30 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
             user=self.context['request'].user,
             **validated_data
         )
+
+
+class SubscriptionReadSerializer(serializers.ModelSerializer):
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id', 'username', 'first_name', 'last_name', 'email',
+            'avatar', 'is_subscribed',
+            'recipes', 'recipes_count',
+        )
+
+    def get_recipes(self, author):
+        qs = author.recipes.all()
+        limit = self.context['request'].query_params.get('recipes_limit')
+        if limit is not None:
+            try:
+                n = int(limit)
+                qs = qs[:n]
+            except ValueError:
+                pass
+        return RecipeShortSerializer(qs, many=True, context=self.context).data
+
+    def get_recipes_count(self, author):
+        return author.recipes.count()

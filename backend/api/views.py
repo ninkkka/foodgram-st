@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 
+from .permissions import IsAuthorOrReadOnly
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
@@ -17,7 +18,7 @@ from recipes.models import (
 )
 from .serializers import (
     UserReadSerializer, UserCreateSerializer, SubscriptionSerializer,
-    IngredientSerializer,
+    IngredientSerializer, SubscriptionReadSerializer,
     RecipeReadSerializer, RecipeWriteSerializer, RecipeShortSerializer,
     FavoriteSerializer, ShoppingCartSerializer, AvatarSerializer
 )
@@ -115,11 +116,16 @@ class CustomUserViewSet(
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            return Response(
-                UserReadSerializer(author,
-                                   context={'request': request}).data,
-                status=status.HTTP_201_CREATED
-            )
+            out = SubscriptionReadSerializer(
+                author,
+                context={'request': request}
+            ).data
+            return Response(out, status=status.HTTP_201_CREATED)
+            # return Response(
+            #     UserReadSerializer(author,
+            #                        context={'request': request}).data,
+            #     status=status.HTTP_201_CREATED
+            # )
         request.user.subscriptions.filter(
             author=author
         ).delete()
@@ -132,10 +138,10 @@ class CustomUserViewSet(
     )
     def subscriptions(self, request):
         """Список подписок текущего пользователя."""
-        authors = User.objects.filter(subscribers__user=request.user)
-        page = self.paginate_queryset(authors)
-        serializer = UserReadSerializer(
-            page or authors,
+        authors_qs = User.objects.filter(subscribers__user=request.user)
+        page = self.paginate_queryset(authors_qs)
+        serializer = SubscriptionReadSerializer(
+            page or authors_qs,
             many=True,
             context={'request': request}
         )
@@ -188,6 +194,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
     pagination_class = CustomPagination
+    permission_classes = (IsAuthorOrReadOnly,)
+
+    def get_permissions(self):
+        if self.action in ('list', 'retrieve', 'get_link'):
+            return [AllowAny()]
+        return [IsAuthorOrReadOnly()]
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -280,3 +292,25 @@ class RecipeViewSet(viewsets.ModelViewSet):
             'attachment; filename="shopping_list.txt"'
         )
         return response
+
+    @action(
+        detail=True,
+        methods=('get',),
+        permission_classes=(AllowAny,),
+        url_path='get-link',
+    )
+    def get_link(self, request, pk=None):
+        recipe = get_object_or_404(Recipe, pk=pk)
+        link = request.build_absolute_uri()
+        return Response(
+            {'short-link': link},
+            status=status.HTTP_200_OK
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        if 'ingredients' not in request.data:
+            return Response(
+                {'ingredients': ['Это поле является обязательным.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().partial_update(request, *args, **kwargs)

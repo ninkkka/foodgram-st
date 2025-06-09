@@ -113,13 +113,13 @@ class Subscription(models.Model):
         return f'{self.user.username} → {self.author.username}'
 
 
-class Tag(models.Model):
-    name = models.CharField(max_length=100)
-    color = models.CharField(max_length=7)
-    slug = models.SlugField(unique=True)
+# class Tag(models.Model):
+#     name = models.CharField(max_length=100)
+#     color = models.CharField(max_length=7)
+#     slug = models.SlugField(unique=True)
 
-    def __str__(self):
-        return self.name
+#     def __str__(self):
+#         return self.name
 
 
 class Ingredient(models.Model):
